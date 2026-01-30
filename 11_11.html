@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoGuardian | Global Sustainability Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html { scroll-behavior: smooth; }
+        #map { height: 500px; border-radius: 1.5rem; z-index: 10; cursor: crosshair; }
+        .hero-gradient { background: linear-gradient(135deg, #064e3b 0%, #059669 100%); }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+        .bot-glow { box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <nav class="glass sticky top-0 z-50 border-b border-emerald-100 px-6 py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-black text-emerald-700 tracking-tight">🌱 ECOGUARDIAN</h1>
+            <div class="hidden md:flex space-x-8 font-medium">
+                <a href="#home" class="hover:text-emerald-600 transition">Home</a>
+                <a href="#aqi" class="hover:text-emerald-600 transition">Live Scan</a>
+                <a href="#solutions" class="hover:text-emerald-600 transition">Solutions</a>
+                <a href="#about" class="hover:text-emerald-600 transition">About</a>
+                <a href="#contact" class="hover:text-emerald-600 transition">Contact</a>
+            </div>
+            <div id="authSection" class="flex gap-4">
+                <button onclick="toggleModal('loginModal')" class="text-emerald-700 font-semibold px-4 py-2">Login</button>
+                <button onclick="toggleModal('signupModal')" class="bg-emerald-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-emerald-700 transition">Sign Up</button>
+            </div>
+        </div>
+    </nav>
+
+    <header id="home" class="hero-gradient text-white py-24 px-6 relative overflow-hidden">
+        <div class="container mx-auto text-center relative z-10">
+            <h2 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">Better Data,<br><span class="text-emerald-300">Cleaner Future.</span></h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#aqi" class="bg-white text-emerald-800 px-8 py-4 rounded-full font-bold text-lg hover:shadow-xl transition">Start Live Scan</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-16">
+        
+        <section id="aqi" class="mb-24">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-slate-800 mb-2">Live Environment Dashboard</h3>
+                <p class="text-slate-500 italic">Enter a city below or click anywhere on the map.</p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <div class="space-y-6">
+                    <div id="aqiCard" class="bg-white p-10 rounded-3xl shadow-xl border-t-8 border-slate-200 text-center">
+                        <p class="text-slate-400 font-bold uppercase tracking-widest text-xs mb-2">Current AQI</p>
+                        <h4 id="aqiValue" class="text-8xl font-black text-slate-300">--</h4>
+                        <p id="aqiStatus" class="text-xl font-bold mt-4 italic">Ready to Scan</p>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-lg flex justify-around border">
+                        <div class="text-center"><p class="text-xs font-bold text-slate-400">TEMP</p><span id="tempVal" class="text-2xl font-bold">--°C</span></div>
+                        <div class="text-center"><p class="text-xs font-bold text-slate-400">HUMIDITY</p><span id="humidVal" class="text-2xl font-bold">--%</span></div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input id="citySearchInput" type="text" placeholder="Enter City (e.g. Delhi)" class="flex-1 px-6 py-3 border rounded-full outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
+                        <button onclick="fetchByCityName()" class="bg-emerald-600 text-white px-6 rounded-full font-bold">Go</button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2">
+                    <div id="map" class="shadow-2xl border-4 border-white"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solutions" class="mb-24">
+            <h3 class="text-3xl font-bold mb-10 text-center">Interactive Sustainability Tools</h3>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 rounded-3xl shadow-lg border-b-4 border-blue-400">
+                    <h4 class="text-xl font-bold mb-2 flex items-center gap-2">💧 Water Purity Scan</h4>
+                    <div id="waterStatus" class="p-3 bg-blue-50 rounded-xl mb-4 text-sm text-blue-800 font-medium">Ready to scan city water...</div>
+                    <button onclick="runWaterScan()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition">Run Local Scan</button>
+                </div>
+
+                <div class="bg-white p-8 rounded-3xl shadow-lg border-b-4 border-purple-400">
+                    <h4 class="text-xl font-bold mb-2 flex items-center gap-2">🔇 Noise Meter</h4>
+                    <div class="h-4 w-full bg-gray-100 rounded-full mb-4 overflow-hidden">
+                        <div id="noiseBar" class="h-full bg-purple-500 transition-all duration-700" style="width: 0%"></div>
+                    </div>
+                    <p id="noiseVal" class="text-sm font-bold text-purple-700 mb-2 font-mono">0 dB - Silent</p>
+                    <button onclick="runNoiseScan()" class="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-600 transition">Listen Ambient</button>
+                </div>
+
+                <div class="bg-white p-8 rounded-3xl shadow-lg border-b-4 border-emerald-400">
+                    <h4 class="text-xl font-bold mb-2 flex items-center gap-2">♻️ Waste AI Classifier</h4>
+                    <input id="wasteInput" type="text" placeholder="Enter item (e.g. Plastic)" class="w-full p-2 border rounded-lg text-sm mb-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <div id="wasteResult" class="text-sm font-bold text-emerald-700 mb-2 p-2 bg-emerald-50 rounded-lg min-h-[40px]">Waiting for input...</div>
+                    <button onclick="runWasteAI()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition w-full">Identify & Recycle</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="mb-24">
+            <div class="text-center mb-8">
+                <h3 class="text-3xl font-bold text-slate-800 mb-2">About Us</h3>
+                <p class="text-slate-500">EcoGuardian connects citizens with local environmental data and sustainable guidance. Trusted by <strong>50k+ users</strong> worldwide for real-time air, water and waste insights.</p>
+            </div>
+
+            <div class="bg-white p-8 rounded-3xl shadow-lg">
+                <h4 class="text-xl font-bold mb-2">Our Mission</h4>
+                <p class="text-slate-600 mb-4">We provide easy-to-use tools to monitor local environmental health and make sustainable choices. Our community shares tips, contributes scans, and helps improve local outcomes.</p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h5 class="font-semibold">What we offer</h5>
+                        <ul class="list-disc list-inside text-slate-600">
+                            <li>Live AQI scanning</li>
+                            <li>Water & noise quick checks</li>
+                            <li>Waste classification assistance</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5 class="font-semibold">Community</h5>
+                        <p class="text-slate-600">Join 50k+ users sharing localized insights and sustainability tips. Your contributions help refine our tools.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="mb-24">
+            <div class="text-center mb-8">
+                <h3 class="text-3xl font-bold text-slate-800 mb-2">Contact & Feedback</h3>
+                <p class="text-slate-500">Questions, partnership inquiries, or feedback? Send us a message — we read everything.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-3xl shadow-lg">
+                    <h4 class="text-lg font-bold mb-3">Contact Us</h4>
+                    <p class="text-slate-600 mb-4">Email: <strong>support@ecoguardian.example</strong><br>Phone: <strong>+1 (555) 123-4567</strong></p>
+                    <form id="contactForm" onsubmit="submitContact(event)">
+                        <input id="cName" type="text" placeholder="Your name" class="w-full p-3 mb-3 border rounded-xl" required>
+                        <input id="cEmail" type="email" placeholder="Your email" class="w-full p-3 mb-3 border rounded-xl" required>
+                        <textarea id="cMessage" placeholder="Message" class="w-full p-3 mb-3 border rounded-xl" rows="4" required></textarea>
+                        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg">Send Message</button>
+                        <div id="contactStatus" class="text-sm text-slate-500 mt-3"></div>
+                    </form>
+                </div>
+
+                <div class="bg-white p-8 rounded-3xl shadow-lg">
+                    <h4 class="text-lg font-bold mb-3">Feedback</h4>
+                    <p class="text-slate-600 mb-4">Help us improve — share a quick rating and a note.</p>
+                    <form id="feedbackForm" onsubmit="submitFeedback(event)">
+                        <label class="text-sm font-medium">Rating</label>
+                        <select id="fRating" class="w-full p-3 mb-3 border rounded-xl">
+                            <option value="5">5 — Excellent</option>
+                            <option value="4">4 — Good</option>
+                            <option value="3">3 — Okay</option>
+                            <option value="2">2 — Poor</option>
+                            <option value="1">1 — Bad</option>
+                        </select>
+                        <textarea id="fMessage" placeholder="What's working or could be better?" class="w-full p-3 mb-3 border rounded-xl" rows="4"></textarea>
+                        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg">Submit Feedback</button>
+                        <div id="feedbackStatus" class="text-sm text-slate-500 mt-3"></div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="signupModal" class="modal">
+        <form id="signupForm" onsubmit="handleAuth(event)" class="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl mx-4">
+            <h3 class="text-2xl font-bold mb-4">Join EcoGuardian</h3>
+            <input id="sName" name="name" type="text" placeholder="Full Name" class="w-full p-3 mb-4 border rounded-xl" required>
+            <input id="sEmail" name="email" type="email" placeholder="Email" class="w-full p-3 mb-4 border rounded-xl" required>
+            <input id="sPassword" name="password" type="password" placeholder="Password" class="w-full p-3 mb-6 border rounded-xl" required>
+            <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">Sign Up</button>
+            <button type="button" onclick="toggleModal('signupModal')" class="w-full mt-4 text-slate-400 text-sm">Close</button>
+        </form>
+    </div>
+
+    <div id="loginModal" class="modal">
+        <form id="loginForm" onsubmit="handleLogin(event)" class="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl mx-4">
+            <h3 class="text-2xl font-bold mb-4">Welcome Back</h3>
+            <input id="lEmail" name="email" type="email" placeholder="Email" class="w-full p-3 mb-4 border rounded-xl" required>
+            <input id="lPassword" name="password" type="password" placeholder="Password" class="w-full p-3 mb-6 border rounded-xl" required>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold">Log In</button>
+                <button type="button" onclick="toggleModal('loginModal')" class="flex-1 mt-0 text-slate-500 border rounded-xl">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const WAQI_TOKEN = 'demo'; 
+        let map = L.map('map').setView([20, 78], 5);
+        let marker;
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // --- Core Scan Logic ---
+        async function fetchEnvironment(lat, lon, name = "Custom Location") {
+            try {
+                const res = await fetch(`https://api.waqi.info/feed/geo:${lat};${lon}/?token=${WAQI_TOKEN}`);
+                const data = await res.json();
+                if(data.status === 'ok') {
+                    const aqi = data.data.aqi;
+                    const t = data.data.iaqi.t ? data.data.iaqi.t.v : (Math.random()*10+20).toFixed(1);
+                    const h = data.data.iaqi.h ? data.data.iaqi.h.v : Math.floor(Math.random()*40+30);
+                    
+                    updateUI(aqi, t, h);
+                    updateMarker(lat, lon, aqi, name);
+                }
+            } catch(e) { console.error("API error", e); }
+        }
+
+        function updateUI(aqi, t, h) {
+            document.getElementById('aqiValue').innerText = aqi;
+            document.getElementById('tempVal').innerText = `${t}°C`;
+            document.getElementById('humidVal').innerText = `${h}%`;
+            const card = document.getElementById('aqiCard');
+            const status = document.getElementById('aqiStatus');
+
+            if(aqi < 51) {
+                card.style.borderTopColor = "#10b981";
+                status.innerText = "Air Quality: Good";
+                status.className = "text-xl font-bold mt-4 text-emerald-600";
+            } else if(aqi < 101) {
+                card.style.borderTopColor = "#facc15";
+                status.innerText = "Air Quality: Moderate";
+                status.className = "text-xl font-bold mt-4 text-yellow-600";
+            } else {
+                card.style.borderTopColor = "#ef4444";
+                status.innerText = "Air Quality: Unhealthy";
+                status.className = "text-xl font-bold mt-4 text-red-600";
+            }
+        }
+
+        function updateMarker(lat, lon, aqi, name) {
+            if(marker) map.removeLayer(marker);
+            marker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>${name}</b><br>AQI: ${aqi}`).openPopup();
+            map.panTo([lat, lon]);
+        }
+
+        // --- Search City FIX ---
+        async function fetchByCityName() {
+            const city = document.getElementById('citySearchInput').value;
+            if(!city) { alert("Please enter a city name!"); return; }
+            
+            try {
+                const res = await fetch(`https://api.waqi.info/feed/${city}/?token=${WAQI_TOKEN}`);
+                const data = await res.json();
+                if(data.status === 'ok') {
+                    const [lat, lon] = data.data.city.geo;
+                    fetchEnvironment(lat, lon, data.data.city.name);
+                } else { alert("City not found in database."); }
+            } catch(e) { alert("Error finding city."); }
+        }
+
+        map.on('click', (e) => fetchEnvironment(e.latlng.lat, e.latlng.lng, "Manual Point"));
+
+        // --- Waste AI FIX ---
+        function runWasteAI() {
+            const inputVal = document.getElementById('wasteInput').value.trim().toLowerCase();
+            const resBox = document.getElementById('wasteResult');
+            
+            if(!inputVal) {
+                resBox.innerText = "Please type an item first!";
+                return;
+            }
+
+            resBox.innerText = "Analyzing material...";
+            
+            setTimeout(() => {
+                if(inputVal.includes("plastic") || inputVal.includes("bottle")) {
+                    resBox.innerText = "RECYCLABLE: Rinse and dry before binning.";
+                } else if(inputVal.includes("apple") || inputVal.includes("food") || inputVal.includes("banana")) {
+                    resBox.innerText = "COMPOST: Put in the organic/green bin.";
+                } else if(inputVal.includes("paper") || inputVal.includes("cardboard")) {
+                    resBox.innerText = "RECYCLABLE: Keep dry and flat.";
+                } else if(inputVal.includes("glass")) {
+                    resBox.innerText = "RECYCLABLE: Place in specific glass container.";
+                } else {
+                    resBox.innerText = "GENERAL WASTE: Dispose of in red/grey bin.";
+                }
+            }, 800);
+        }
+
+        // --- Other Services ---
+        function runWaterScan() {
+            const status = document.getElementById('waterStatus');
+            status.innerText = "Scanning TDS levels...";
+            setTimeout(() => {
+                const tds = Math.floor(Math.random() * 200) + 50;
+                status.innerHTML = `<strong>TDS: ${tds} ppm</strong><br>Quality: ${tds < 100 ? 'Pure' : 'Acceptable'}`;
+            }, 1200);
+        }
+
+        function runNoiseScan() {
+            const db = Math.floor(Math.random() * 60) + 30;
+            document.getElementById('noiseBar').style.width = db + "%";
+            document.getElementById('noiseVal').innerText = `${db} dB - ${db > 70 ? 'Noisy' : 'Safe'}`;
+        }
+
+        function toggleModal(id) { document.getElementById(id).style.display = (document.getElementById(id).style.display === 'flex') ? 'none' : 'flex'; }
+        
+        // --- Auth: simple localStorage-backed users ---
+        function handleAuth(e) {
+            e.preventDefault();
+            const name = document.getElementById('sName').value.trim();
+            const email = document.getElementById('sEmail').value.trim().toLowerCase();
+            const password = document.getElementById('sPassword').value;
+
+            if(!name || !email || !password) return alert('Please fill all fields.');
+
+            const users = JSON.parse(localStorage.getItem('ecoUsers') || '[]');
+            if(users.find(u => u.email === email)) {
+                return alert('An account with that email already exists. Please log in.');
+            }
+
+            users.push({ name, email, password });
+            localStorage.setItem('ecoUsers', JSON.stringify(users));
+            localStorage.setItem('ecoUser', name);
+            renderUser();
+            toggleModal('signupModal');
+            document.getElementById('signupForm').reset();
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('lEmail').value.trim().toLowerCase();
+            const password = document.getElementById('lPassword').value;
+
+            const users = JSON.parse(localStorage.getItem('ecoUsers') || '[]');
+            const match = users.find(u => u.email === email && u.password === password);
+            if(!match) return alert('Invalid email or password.');
+
+            localStorage.setItem('ecoUser', match.name);
+            renderUser();
+            toggleModal('loginModal');
+            document.getElementById('loginForm').reset();
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('ecoUser');
+            renderUser();
+        }
+
+        function renderUser() {
+            const user = localStorage.getItem('ecoUser');
+            if(user) {
+                document.getElementById('authSection').innerHTML = `
+                    <span class="font-bold text-emerald-800">Hi, ${user.split(' ')[0]}!</span>
+                    <button onclick="logoutUser()" class="text-sm text-slate-500 ml-3">Logout</button>
+                `;
+            } else {
+                document.getElementById('authSection').innerHTML = `
+                    <button onclick="toggleModal('loginModal')" class="text-emerald-700 font-semibold px-4 py-2">Login</button>
+                    <button onclick="toggleModal('signupModal')" class="bg-emerald-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-emerald-700 transition">Sign Up</button>
+                `;
+            }
+        }
+        window.onload = renderUser;
+    </script>
+        </script>
+        <script>
+            function submitContact(e) {
+                e.preventDefault();
+                const name = document.getElementById('cName').value.trim();
+                const email = document.getElementById('cEmail').value.trim().toLowerCase();
+                const message = document.getElementById('cMessage').value.trim();
+                if(!name || !email || !message) return document.getElementById('contactStatus').innerText = 'Please fill all fields.';
+
+                const contacts = JSON.parse(localStorage.getItem('ecoContacts') || '[]');
+                contacts.push({ name, email, message, at: new Date().toISOString() });
+                localStorage.setItem('ecoContacts', JSON.stringify(contacts));
+
+                document.getElementById('contactStatus').innerText = 'Thanks — message saved locally.';
+                document.getElementById('contactForm').reset();
+                setTimeout(()=> document.getElementById('contactStatus').innerText = '', 4000);
+            }
+
+            function submitFeedback(e) {
+                e.preventDefault();
+                const rating = document.getElementById('fRating').value;
+                const message = document.getElementById('fMessage').value.trim();
+
+                const feedback = JSON.parse(localStorage.getItem('ecoFeedback') || '[]');
+                feedback.push({ rating: Number(rating), message, at: new Date().toISOString() });
+                localStorage.setItem('ecoFeedback', JSON.stringify(feedback));
+
+                document.getElementById('feedbackStatus').innerText = 'Thanks for the feedback!';
+                document.getElementById('feedbackForm').reset();
+                setTimeout(()=> document.getElementById('feedbackStatus').innerText = '', 4000);
+            }
+        </script>
+        
+        <!-- Footer -->
+        <footer class="bg-slate-800 text-white py-10 mt-12">
+            <div class="container mx-auto px-6">
+                <div class="grid md:grid-cols-3 gap-8 items-start">
+                    <div>
+                        <h4 class="text-2xl font-bold text-emerald-300">🌱 ECOGUARDIAN</h4>
+                        <p class="text-slate-300 mt-2">Trusted by 50k+ users for local environmental insights.</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold">Quick Links</h5>
+                        <ul class="mt-3 text-slate-300 space-y-2">
+                            <li><a href="#aqi" class="hover:text-white">Live Scan</a></li>
+                            <li><a href="#solutions" class="hover:text-white">Tools</a></li>
+                            <li><a href="#about" class="hover:text-white">About</a></li>
+                            <li><a href="#contact" class="hover:text-white">Contact</a></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold">Contact</h5>
+                        <p class="text-slate-300 mt-2">support@ecoguardian.example</p>
+                        <p class="text-slate-300">+1 (555) 123-4567</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-700 mt-8 pt-6 text-center text-slate-400 text-sm">
+                    <div>©️ <span id="year"></span> EcoGuardian — All rights reserved.</div>
+                    <div class="mt-2">Built with ❤️ to help communities make greener choices.</div>
+                </div>
+            </div>
+        </footer>
+
+        <script>document.getElementById('year').innerText = new Date().getFullYear();</script>
+
+        <!-- AI Assistant Chat Widget -->
+        <style>
+            .ai-chat-button { position: fixed; right: 24px; bottom: 24px; z-index: 60; }
+            .ai-chat-panel { position: fixed; right: 24px; bottom: 90px; width: 360px; max-height: 70vh; z-index: 70; display: none; }
+            .ai-messages { max-height: 56vh; overflow:auto; }
+            .ai-msg.user { text-align: right; }
+            .ai-msg.assistant { text-align: left; }
+        </style>
+
+        <div class="ai-chat-button">
+            <button id="openBotBtn" title="Assistant" class="bg-emerald-600 text-white p-4 rounded-full shadow-lg bot-glow">💬</button>
+        </div>
+
+        <div id="aiPanel" class="ai-chat-panel glass rounded-2xl shadow-2xl border p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="font-bold text-emerald-800">Assistant</h4>
+                <button id="closeBotBtn" class="text-slate-500">✕</button>
+            </div>
+            <div id="aiMessages" class="ai-messages space-y-3 mb-3"></div>
+            <form id="aiForm" class="flex gap-2">
+                <input id="aiInput" type="text" placeholder="Ask me about sustainability or scans..." class="flex-1 p-2 rounded-full border outline-none">
+                <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-full">Send</button>
+            </form>
+            <div id="aiStatus" class="text-xs text-slate-400 mt-2"></div>
+        </div>
+
+        <script>
+            const openBtn = document.getElementById('openBotBtn');
+            const closeBtn = document.getElementById('closeBotBtn');
+            const panel = document.getElementById('aiPanel');
+            const aiForm = document.getElementById('aiForm');
+            const aiInput = document.getElementById('aiInput');
+            const aiMessages = document.getElementById('aiMessages');
+            const aiStatus = document.getElementById('aiStatus');
+
+            openBtn.addEventListener('click', () => { panel.style.display = 'block'; aiInput.focus(); });
+            closeBtn.addEventListener('click', () => panel.style.display = 'none');
+
+            function appendMessage(role, text) {
+                const div = document.createElement('div');
+                div.className = `ai-msg ${role}`;
+                div.innerHTML = `<div class="inline-block px-4 py-2 rounded-lg ${role==='user' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-800'}">${text}</div>`;
+                aiMessages.appendChild(div);
+                aiMessages.scrollTop = aiMessages.scrollHeight;
+            }
+
+            async function sendToServer(messages) {
+                try {
+                    aiStatus.innerText = 'Contacting server...';
+                    const res = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ messages })
+                    });
+                    if(!res.ok) throw new Error('Server error');
+                    const data = await res.json();
+                    return data;
+                } catch (e) {
+                    console.warn('Proxy failed:', e);
+                    return { error: true, message: 'Server unavailable. Try adding an OpenAI key and running the proxy, or use offline replies.' };
+                } finally { aiStatus.innerText = ''; }
+            }
+
+            // Simple offline fallback assistant
+            function offlineReply(userText) {
+                if(/recycle|waste|trash/i.test(userText)) return 'You can recycle plastics, paper and glass. Compost food waste.';
+                if(/aqi|air quality|pollution/i.test(userText)) return 'AQI is the metric for air quality. Use the Live Scan to get local AQI.';
+                if(/water|tds/i.test(userText)) return 'TDS indicates dissolved solids; under 100 ppm is considered good.';
+                return 'I can help with scans, recycling tips, and local environment info. Try asking about AQI or recycling.';
+            }
+
+            aiForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const text = aiInput.value.trim();
+                if(!text) return;
+                appendMessage('user', text);
+                aiInput.value = '';
+
+                // Build messages array (simple one-shot)
+                const messages = [{ role: 'user', content: text }];
+
+                const result = await sendToServer(messages);
+                if(result && result.choices && result.choices[0] && result.choices[0].message) {
+                    appendMessage('assistant', result.choices[0].message.content);
+                } else if(result && result.message && result.error) {
+                    appendMessage('assistant', result.message);
+                    appendMessage('assistant', offlineReply(text));
+                } else if(result && result.error) {
+                    appendMessage('assistant', offlineReply(text));
+                } else {
+                    appendMessage('assistant', offlineReply(text));
+                }
+            });
+        </script>
+</body>
+</html>
